@@ -66,19 +66,25 @@ async def already_in_chat(chat_identifier):
 
 async def join_chat(chat_identifier):
     try:
-        # Для публичных каналов и групп по username
-        await client.join_channel(chat_identifier)
-        logger.info(f"✅ Вступил: {chat_identifier}")
-        return True
+        # Ссылка-приглашение
+        if chat_identifier.startswith('https://t.me/joinchat/'):
+            await client.join_chat(chat_identifier)
+            logger.info(f"✅ Вступил по ссылке: {chat_identifier}")
+            return True
+        # Публичный канал/группа
+        else:
+            await client.join_channel(chat_identifier)
+            logger.info(f"✅ Вступил в канал/группу: {chat_identifier}")
+            return True
     except FloodWaitError as e:
         logger.warning(f"Flood wait {e.seconds} сек")
         await asyncio.sleep(e.seconds)
         return False
     except Exception as e:
-        # Если не получилось join_channel, пробуем join_chat (для приватных ссылок-приглашений)
+        # Если не получилось join_channel, пробуем join_chat
         try:
             await client.join_chat(chat_identifier)
-            logger.info(f"✅ Вступил (по ссылке): {chat_identifier}")
+            logger.info(f"✅ Вступил (join_chat): {chat_identifier}")
             return True
         except Exception as e2:
             if 'already in chat' in str(e2).lower() or 'already a member' in str(e2).lower():

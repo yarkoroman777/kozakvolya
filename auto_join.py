@@ -5,6 +5,8 @@ import random
 import os
 from datetime import datetime, timedelta
 from telethon import TelegramClient
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.errors import FloodWaitError
 
 API_ID = 37608717
@@ -66,14 +68,17 @@ async def already_in_chat(chat_identifier):
 
 async def join_chat(chat_identifier):
     try:
-        # Если это ссылка-приглашение
+        # Ссылка-приглашение
         if chat_identifier.startswith('https://t.me/joinchat/'):
-            await client.join_chat(chat_identifier)
+            hash_part = chat_identifier.split('joinchat/')[-1]
+            await client(ImportChatInviteRequest(hash_part))
             logger.info(f"✅ Вступил по ссылке: {chat_identifier}")
             return True
-        # Если это публичный канал/группа (начинается с @ или просто название)
+        # Публичный канал/группа
         else:
-            await client.join_channel(chat_identifier)
+            # Получаем сущность чата по username
+            entity = await client.get_entity(chat_identifier)
+            await client(JoinChannelRequest(entity))
             logger.info(f"✅ Вступил в канал/группу: {chat_identifier}")
             return True
     except FloodWaitError as e:
@@ -81,17 +86,11 @@ async def join_chat(chat_identifier):
         await asyncio.sleep(e.seconds)
         return False
     except Exception as e:
-        # Если не получилось join_channel, пробуем join_chat (на всякий случай)
-        try:
-            await client.join_chat(chat_identifier)
-            logger.info(f"✅ Вступил (join_chat): {chat_identifier}")
+        if 'already in chat' in str(e).lower() or 'already a member' in str(e).lower():
+            logger.info(f"ℹ️ Уже в чате: {chat_identifier}")
             return True
-        except Exception as e2:
-            if 'already in chat' in str(e2).lower() or 'already a member' in str(e2).lower():
-                logger.info(f"ℹ️ Уже в чате: {chat_identifier}")
-                return True
-            logger.error(f"❌ Ошибка {chat_identifier}: {e2}")
-            return False
+        logger.error(f"❌ Ошибка {chat_identifier}: {e}")
+        return False
 
 def load_chats():
     if os.path.exists(CHATS_FILE):

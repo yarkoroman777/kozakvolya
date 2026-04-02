@@ -2,44 +2,20 @@
 import asyncio
 import logging
 import random
-import requests
-from datetime import datetime
 from telethon import TelegramClient, events
 
-# === ТВОИ ДАННЫЕ (вшиты) ===
 API_ID = 37608717
 API_HASH = '89a0956ade52c8ec8cbe05ba31716a2e'
 PHONE_NUMBER = '+14502599439'
 MY_TELEGRAM_ID = 8614044372
 REDBUBBLE_URL = 'https://bit.ly/4daFLfm'
-BITLY_ACCESS_TOKEN = '600cd668019fca6116eade2fb4d9774defde7312'
-BITLINK = 'bit.ly/4daFLfm'
-CHECK_INTERVAL = 60
 
-# === КЛЮЧЕВЫЕ СЛОВА (расширенные) ===
 KEYWORDS = {
-    'uk': [
-        'футболка', 'мерч', 'одяг', 'вишиванка', 'козак', 'донат', 'допомога',
-        'волонтер', 'зсу', 'армія', 'дрони', 'гуманітарка', 'купити', 'підтримка',
-        'мистецтво', 'арт', 'графіті', 'малюнок', 'художник', 'дизайн', 'творчість',
-        'принт', 'патріотичний', 'сувенір', 'благодійність', 'збір', 'допоможи'
-    ],
-    'ru': [
-        'футболка', 'мерч', 'казак', 'донат', 'помощь', 'волонтёр', 'всу', 'армия',
-        'дроны', 'гуманитарка', 'купить', 'поддержка', 'искусство', 'арт', 'граффити',
-        'рисунок', 'художник', 'дизайн', 'творчество', 'принт', 'патриотический',
-        'сувенир', 'благотворительность', 'сбор', 'помоги'
-    ],
-    'en': [
-        't-shirt', 'tshirt', 'shirt', 'merch', 'cossack', 'donate', 'donation',
-        'help', 'volunteer', 'ukraine', 'ukrainian', 'drone', 'humanitarian',
-        'buy', 'support', 'freedom', 'art', 'graffiti', 'drawing', 'design',
-        'artist', 'creativity', 'painting', 'print', 'patriotic', 'souvenir',
-        'charity', 'fundraiser'
-    ]
+    'uk': ['футболка', 'мерч', 'одяг', 'вишиванка', 'козак', 'донат', 'допомога', 'волонтер', 'зсу', 'армія', 'дрони', 'гуманітарка', 'купити', 'підтримка', 'мистецтво', 'арт', 'графіті', 'малюнок', 'художник', 'дизайн', 'творчість', 'принт', 'патріотичний', 'сувенір', 'благодійність', 'збір', 'допоможи'],
+    'ru': ['футболка', 'мерч', 'казак', 'донат', 'помощь', 'волонтёр', 'всу', 'армия', 'дроны', 'гуманитарка', 'купить', 'поддержка', 'искусство', 'арт', 'граффити', 'рисунок', 'художник', 'дизайн', 'творчество', 'принт', 'патриотический', 'сувенир', 'благотворительность', 'сбор', 'помоги'],
+    'en': ['t-shirt', 'tshirt', 'shirt', 'merch', 'cossack', 'donate', 'donation', 'help', 'volunteer', 'ukraine', 'ukrainian', 'drone', 'humanitarian', 'buy', 'support', 'freedom', 'art', 'graffiti', 'drawing', 'design', 'artist', 'creativity', 'painting', 'print', 'patriotic', 'souvenir', 'charity', 'fundraiser']
 }
 
-# === 15 ОТВЕТОВ НА КАЖДЫЙ ЯЗЫК ===
 ANSWERS = {
     'uk': [
         "Є футболка з козаком. 20% з продажу йде на дрони та гуманітарку. Посилання: {url}",
@@ -94,7 +70,6 @@ ANSWERS = {
     ]
 }
 
-# === НАСТРОЙКА ЛОГОВ ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -114,41 +89,6 @@ def contains_keywords(text, lang):
         return False
     keywords = KEYWORDS.get(lang, KEYWORDS['en'])
     return any(kw in text.lower() for kw in keywords)
-
-async def get_bitlink_clicks():
-    if not BITLY_ACCESS_TOKEN:
-        return None
-    headers = {"Authorization": f"Bearer {BITLY_ACCESS_TOKEN}"}
-    url = f"https://api-ssl.bitly.com/v4/bitlinks/{BITLINK}/clicks/summary"
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            return response.json().get('total_clicks', 0)
-        else:
-            logger.error(f"Bitly API error: {response.status_code}")
-            return None
-    except Exception as e:
-        logger.error(f"Bitly request failed: {e}")
-        return None
-
-async def check_clicks_task():
-    last_clicks = None
-    while True:
-        try:
-            clicks = await get_bitlink_clicks()
-            if clicks is not None:
-                if last_clicks is None:
-                    last_clicks = clicks
-                    logger.info(f"Стартовое количество кликов: {last_clicks}")
-                elif clicks != last_clicks:
-                    diff = clicks - last_clicks
-                    msg = f"🔗 *Новые переходы по ссылке!*\n📊 Всего кликов: {clicks} (+{diff})\n🔗 Ссылка: {REDBUBBLE_URL}"
-                    await client.send_message(MY_TELEGRAM_ID, msg)
-                    logger.info(f"Отправлено уведомление: +{diff} кликов (всего {clicks})")
-                    last_clicks = clicks
-        except Exception as e:
-            logger.error(f"Ошибка в check_clicks_task: {e}")
-        await asyncio.sleep(CHECK_INTERVAL)
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
@@ -179,8 +119,7 @@ async def handler(event):
 async def main():
     await client.start(phone=PHONE_NUMBER)
     logger.info("Бот запущен, слушаю сообщения и комментарии...")
-    await client.send_message(MY_TELEGRAM_ID, "🚀 Промо-бот для Redbubble запущен! Уведомления только о переходах.")
-    asyncio.create_task(check_clicks_task())
+    await client.send_message(MY_TELEGRAM_ID, "🚀 Промо-бот для Redbubble запущен!")
     await client.run_until_disconnected()
 
 if __name__ == '__main__':

@@ -66,8 +66,8 @@ async def already_in_chat(chat_identifier):
 
 async def join_chat(chat_identifier):
     try:
-        # Метод join_chat работает как для публичных ссылок, так и для username каналов/групп
-        await client.join_chat(chat_identifier)
+        # Для публичных каналов и групп по username
+        await client.join_channel(chat_identifier)
         logger.info(f"✅ Вступил: {chat_identifier}")
         return True
     except FloodWaitError as e:
@@ -75,11 +75,17 @@ async def join_chat(chat_identifier):
         await asyncio.sleep(e.seconds)
         return False
     except Exception as e:
-        if 'already in chat' in str(e).lower() or 'already a member' in str(e).lower():
-            logger.info(f"ℹ️ Уже в чате: {chat_identifier}")
+        # Если не получилось join_channel, пробуем join_chat (для приватных ссылок-приглашений)
+        try:
+            await client.join_chat(chat_identifier)
+            logger.info(f"✅ Вступил (по ссылке): {chat_identifier}")
             return True
-        logger.error(f"❌ Ошибка {chat_identifier}: {e}")
-        return False
+        except Exception as e2:
+            if 'already in chat' in str(e2).lower() or 'already a member' in str(e2).lower():
+                logger.info(f"ℹ️ Уже в чате: {chat_identifier}")
+                return True
+            logger.error(f"❌ Ошибка {chat_identifier}: {e2}")
+            return False
 
 def load_chats():
     if os.path.exists(CHATS_FILE):

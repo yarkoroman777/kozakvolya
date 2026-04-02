@@ -66,12 +66,12 @@ async def already_in_chat(chat_identifier):
 
 async def join_chat(chat_identifier):
     try:
-        # Ссылка-приглашение
+        # Если это ссылка-приглашение
         if chat_identifier.startswith('https://t.me/joinchat/'):
             await client.join_chat(chat_identifier)
             logger.info(f"✅ Вступил по ссылке: {chat_identifier}")
             return True
-        # Публичный канал/группа
+        # Если это публичный канал/группа (начинается с @ или просто название)
         else:
             await client.join_channel(chat_identifier)
             logger.info(f"✅ Вступил в канал/группу: {chat_identifier}")
@@ -81,7 +81,7 @@ async def join_chat(chat_identifier):
         await asyncio.sleep(e.seconds)
         return False
     except Exception as e:
-        # Если не получилось join_channel, пробуем join_chat
+        # Если не получилось join_channel, пробуем join_chat (на всякий случай)
         try:
             await client.join_chat(chat_identifier)
             logger.info(f"✅ Вступил (join_chat): {chat_identifier}")

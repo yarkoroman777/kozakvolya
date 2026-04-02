@@ -13,8 +13,9 @@ PHONE_NUMBER = '+14502599439'
 MY_TELEGRAM_ID = 8614044372
 REDBUBBLE_URL = 'https://bit.ly/4daFLfm'
 
-COOLDOWN_SECONDS = 300  # 5 минут между ответами в одном чате
+COOLDOWN_SECONDS = 600  # 10 минут между ответами в одном чате
 
+# Ключевые слова и ответы (оставлены как в прошлый раз)
 KEYWORDS = {
     'uk': ['футболка', 'мерч', 'одяг', 'вишиванка', 'козак', 'донат', 'допомога', 'волонтер', 'зсу', 'армія', 'дрони', 'гуманітарка', 'купити', 'підтримка', 'мистецтво', 'арт', 'графіті', 'малюнок', 'художник', 'дизайн', 'творчість', 'принт', 'патріотичний', 'сувенір', 'благодійність', 'збір', 'допоможи'],
     'ru': ['футболка', 'мерч', 'казак', 'донат', 'помощь', 'волонтёр', 'всу', 'армия', 'дроны', 'гуманитарка', 'купить', 'поддержка', 'искусство', 'арт', 'граффити', 'рисунок', 'художник', 'дизайн', 'творчество', 'принт', 'патриотический', 'сувенир', 'благотворительность', 'сбор', 'помоги'],
@@ -75,7 +76,11 @@ ANSWERS = {
     ]
 }
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.FileHandler('promo_bot.log'), logging.StreamHandler()]
+)
 logger = logging.getLogger(__name__)
 
 client = TelegramClient('promo_session', API_ID, API_HASH)
@@ -95,6 +100,20 @@ def contains_keywords(text, lang):
         return False
     keywords = KEYWORDS.get(lang, KEYWORDS['en'])
     return any(kw in text.lower() for kw in keywords)
+
+async def get_chat_name(chat_id):
+    """Возвращает название чата или username."""
+    try:
+        entity = await client.get_entity(chat_id)
+        if hasattr(entity, 'title') and entity.title:
+            return entity.title
+        elif hasattr(entity, 'username') and entity.username:
+            return '@' + entity.username
+        else:
+            return str(chat_id)
+    except Exception as e:
+        logger.warning(f"Не удалось получить название чата {chat_id}: {e}")
+        return str(chat_id)
 
 async def safe_reply(event, message):
     try:
@@ -131,7 +150,8 @@ async def handler(event):
             success = await safe_reply(event, answer)
             if success:
                 last_reply_time[chat_id] = now
-                logger.info(f"Ответил в чате {chat_id} на сообщение {event.id}")
+                chat_name = await get_chat_name(chat_id)
+                logger.info(f"Ответил в чате '{chat_name}' ({chat_id}) на сообщение {event.id}")
             return
 
         if event.is_reply:
@@ -144,7 +164,8 @@ async def handler(event):
                     success = await safe_reply(event, answer)
                     if success:
                         last_reply_time[chat_id] = now
-                        logger.info(f"Ответил в чате {chat_id} на пост {original_post.id}")
+                        chat_name = await get_chat_name(chat_id)
+                        logger.info(f"Ответил в чате '{chat_name}' ({chat_id}) на пост {original_post.id}")
                     return
     except Exception as e:
         logger.error(f"Ошибка в обработчике: {e}")
@@ -152,7 +173,7 @@ async def handler(event):
 async def main():
     await client.start(phone=PHONE_NUMBER)
     logger.info("Бот запущен, слушаю сообщения и комментарии...")
-    await client.send_message(MY_TELEGRAM_ID, "🚀 Промо-бот для Redbubble запущен (с защитой от флуда)!")
+    await client.send_message(MY_TELEGRAM_ID, "🚀 Промо-бот для Redbubble запущен (с защитой от флуда и логированием чатов)!")
     await client.run_until_disconnected()
 
 if __name__ == '__main__':

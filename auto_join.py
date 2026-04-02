@@ -5,14 +5,13 @@ import random
 import os
 from datetime import datetime, timedelta
 from telethon import TelegramClient
-from telethon.errors import FloodWaitError, AlreadyInChatError
+from telethon.errors import FloodWaitError
 
-# === ТВОИ ДАННЫЕ (вшиты) ===
 API_ID = 37608717
 API_HASH = '89a0956ade52c8ec8cbe05ba31716a2e'
 PHONE_NUMBER = '+14502599439'
 
-CHATS_FILE = 'chats.txt'          # если файл есть – будет читать оттуда, иначе используем встроенный список
+CHATS_FILE = 'chats.txt'
 PROCESSED_FILE = 'processed.txt'
 LOG_FILE = 'auto_join.log'
 
@@ -29,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 client = TelegramClient('auto_join_session', API_ID, API_HASH)
 
-# === ВСТРОЕННЫЙ СПИСОК ЧАТОВ (200+) ===
 BUILTIN_CHATS = [
     '@ukrainians_in_us', '@ukrainian_us', 'NY State - Help Ukrainians',
     'УКРАЇНЦІ В НЬЮ-ЙОРК ТА США', '❤️Привет Украина❤️ЧАТ', 'Ukrainians in Toronto',
@@ -78,14 +76,14 @@ async def join_chat(chat_identifier):
             await client.join_channel(chat_identifier)
         logger.info(f"✅ Вступил: {chat_identifier}")
         return True
-    except AlreadyInChatError:
-        logger.info(f"ℹ️ Уже в чате: {chat_identifier}")
-        return True
     except FloodWaitError as e:
         logger.warning(f"Flood wait {e.seconds} сек")
         await asyncio.sleep(e.seconds)
         return False
     except Exception as e:
+        if 'already in chat' in str(e).lower():
+            logger.info(f"ℹ️ Уже в чате: {chat_identifier}")
+            return True
         logger.error(f"❌ Ошибка {chat_identifier}: {e}")
         return False
 
